@@ -1,113 +1,110 @@
-.section .text
+.text
 .globl make_node
 .globl insert
 .globl get
 .globl getAtMost
-.extern malloc
 
-# make_node(int val)
 make_node:
-    mv x20, ra          # save return address
-    mv x21, a0          # val
+    addi sp, sp, -16
+    sd ra, 8(sp)
+    sd s0, 0(sp)
 
+    mv s0, a0
     li a0, 24
     call malloc
 
-    mv x22, a0          # node pointer
+    sw s0, 0(a0)
+    sd zero, 8(a0)
+    sd zero, 16(a0)
 
-    sd x21, 0(x22)      # val
-    li x23, 0
-    sd x23, 8(x22)      # left
-    sd x23, 16(x22)     # right
-
-    mv a0, x22
-
-    mv ra, x20          # restore ra
+    ld ra, 8(sp)
+    ld s0, 0(sp)
+    addi sp, sp, 16
     ret
 
-
-# insert(root=a0, val=a1)
 insert:
-    mv x20, ra
+    addi sp, sp, -32
+    sd ra, 24(sp)
+    sd s0, 16(sp)
+    sd s1, 8(sp)
 
-    beq a0, x0, insert_null
+    mv s0, a0
+    mv s1, a1
 
-    ld x21, 0(a0)
-    blt a1, x21, go_left
+    bnez s0, insert_compare
 
-# go right
-    ld x22, 16(a0)
-    mv x23, a0
-
-    mv a0, x22
-    call insert
-
-    sd a0, 16(x23)
-    mv a0, x23
-    j insert_end
-
-go_left:
-    ld x22, 8(a0)
-    mv x23, a0
-
-    mv a0, x22
-    call insert
-
-    sd a0, 8(x23)
-    mv a0, x23
-    j insert_end
-
-insert_null:
-    mv a0, a1
+    mv a0, s1
     call make_node
+    j insert_end
+
+insert_compare:
+    lw t0, 0(s0)
+    beq s1, t0, insert_dup
+    blt s1, t0, insert_left
+
+    ld a0, 16(s0)
+    mv a1, s1
+    call insert
+    sd a0, 16(s0)
+    j insert_dup
+
+insert_left:
+    ld a0, 8(s0)
+    mv a1, s1
+    call insert
+    sd a0, 8(s0)
+
+insert_dup:
+    mv a0, s0
 
 insert_end:
-    mv ra, x20
+    ld ra, 24(sp)
+    ld s0, 16(sp)
+    ld s1, 8(sp)
+    addi sp, sp, 32
     ret
 
-
-# get(root=a0, val=a1)
 get:
-    beq a0, x0, get_null
+get_loop:
+    beqz a0, get_end
+    lw t0, 0(a0)
 
-    ld x21, 0(a0)
-    beq x21, a1, found
-    blt a1, x21, go_left_g
+    beq a1, t0, get_end
+    blt a1, t0, get_left
 
-# go right
     ld a0, 16(a0)
-    j get
+    j get_loop
 
-go_left_g:
+get_left:
     ld a0, 8(a0)
-    j get
+    j get_loop
 
-found:
+get_end:
     ret
 
-get_null:
-    li a0, 0
-    ret
-
-
-# getAtMost(val=a0, root=a1)
 getAtMost:
-    li x20, -1      # answer
+    li a2, -1
 
-loop:
-    beq a1, x0, done
+gam_loop:
+    beqz a1, getAtMost_end
 
-    ld x21, 0(a1)
-    bgt x21, a0, go_left2
+    lw t0, 0(a1)
 
-    mv x20, x21
+    beq t0, a0, getAtMost_equal
+    bgt t0, a0, getAtMost_left
+
+    mv a2, t0
     ld a1, 16(a1)
-    j loop
+    j gam_loop
 
-go_left2:
+getAtMost_left:
     ld a1, 8(a1)
-    j loop
+    j gam_loop
 
-done:
-    mv a0, x20
+getAtMost_equal:
+    mv a0, t0
+    ret
+
+getAtMost_end:
+    mv a0, a2
     ret

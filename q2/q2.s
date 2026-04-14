@@ -1,133 +1,139 @@
 .section .data
-fmt:    .string "%ld "
-newline:.string "\n"
+fmt: .string "%ld "
+nl:  .string "\n"
 
 .section .bss
-.lcomm arr, 800        # input array (max 100 elements)
-.lcomm res, 800        # result array
-.lcomm stack, 800      # stack (stores indices)
+arr:    .space 800
+res:    .space 800
+stack:  .space 800
 
 .section .text
 .globl main
 
 main:
-    mv x20, a0      #a0=no of arguments ie n+1
-    addi x20, x20, -1     #x20=n
-    mv x21, a1            #x21 stores addresses of the values
-    li x22, 0             #x22 is i 
+    # x5 = n
+    addi x5, a0, -1        # n = argc - 1
+    mv x6, a1              # argv
 
-parse_loop:
-    bge x22, x20, parse_done     #if i==n go to parse_done
+    li x7, 0               # i = 0
 
-    addi x23, x22, 1           #x23 = x22+1 i.e i+1
-    slli x23, x23, 3           #x23 = x23*8 i.e (i+1)*8
-    add x23, x21, x23          
-    ld x24, 0(x23)             
+# -------- Read input --------
+read_loop:
+    bge x7, x5, read_done
 
-    mv a0, x24
-    call atoi                  #strings to integers
+    addi x8, x7, 1
+    slli x8, x8, 3
+    add x8, x6, x8
+    ld a0, 0(x8)
+    call atoi
 
-    slli x25, x22, 3
-    la x26, arr
-    add x25, x26, x25
-    sd a0, 0(x25)
+    la x9, arr
+    slli x10, x7, 3
+    add x10, x9, x10
+    sd a0, 0(x10)
 
-    addi x22, x22, 1
-    j parse_loop
+    addi x7, x7, 1
+    j read_loop
 
-parse_done:
-    li x22, 0
-init_res:
-    bge x22, x20, init_done
-    slli x23, x22, 3
-    la x24, res
-    add x23, x24, x23
-    li x25, -1
-    sd x25, 0(x23)
-    addi x22, x22, 1
-    j init_res
+read_done:
+
+# -------- res[i] = -1 --------
+    li x7, 0
+init:
+    bge x7, x5, init_done
+    la x8, res
+    slli x9, x7, 3
+    add x9, x8, x9
+    li x10, -1
+    sd x10, 0(x9)
+    addi x7, x7, 1
+    j init
 
 init_done:
 
+# -------- Stack logic --------
+    li x11, -1         # top = -1
+    addi x7, x5, -1    # i = n-1
 
-    li x30, -1       
-    addi x22, x20, -1  
+outer:
+    blt x7, zero, finish
 
-outer_loop:
-    blt x22, zero, done
+while:
+    blt x11, zero, end_while
 
-
-while_loop:
-    blt x30, zero, end_while
-
-    la x23, stack
-    slli x24, x30, 3
-    add x24, x23, x24
-    ld x25, 0(x24)      
+    # stack[top]
+    la x8, stack
+    slli x9, x11, 3
+    add x9, x8, x9
+    ld x10, 0(x9)
 
     # arr[stack[top]]
-    la x26, arr
-    slli x27, x25, 3
-    add x27, x26, x27
-    ld x28, 0(x27)
+    la x12, arr
+    slli x13, x10, 3
+    add x13, x12, x13
+    ld x14, 0(x13)
 
     # arr[i]
-    slli x29, x22, 3
-    add x29, x26, x29
-    ld x31, 0(x29)
+    slli x15, x7, 3
+    add x15, x12, x15
+    ld x16, 0(x15)
 
-    ble x28, x31, pop_stack
+    ble x14, x16, pop
     j end_while
 
-pop_stack:
-    addi x30, x30, -1
-    j while_loop
+pop:
+    addi x11, x11, -1
+    j while
 
 end_while:
 
-    blt x30, zero, skip_assign
+    # if stack not empty → res[i] = stack[top]
+    blt x11, zero, skip
 
-    la x23, stack
-    slli x24, x30, 3
-    add x24, x23, x24
-    ld x25, 0(x24)
+    la x8, stack
+    slli x9, x11, 3
+    add x9, x8, x9
+    ld x10, 0(x9)
 
-    la x26, res
-    slli x27, x22, 3
-    add x27, x26, x27
-    sd x25, 0(x27)
+    la x12, res
+    slli x13, x7, 3
+    add x13, x12, x13
+    sd x10, 0(x13)
 
-skip_assign:
+skip:
 
-    addi x30, x30, 1
-    la x23, stack
-    slli x24, x30, 3
-    add x24, x23, x24
-    sd x22, 0(x24)
+    # push i
+    addi x11, x11, 1
+    la x8, stack
+    slli x9, x11, 3
+    add x9, x8, x9
+    sd x7, 0(x9)
 
-    addi x22, x22, -1
-    j outer_loop
+    addi x7, x7, -1
+    j outer
 
-done:
+finish:
 
-    li x22, 0
+# -------- Print --------
+    li x7, 0
 
-print_loop:
-    bge x22, x20, print_done
-    la x23, res
-    slli x24, x22, 3
-    add x24, x23, x24
-    ld x25, 0(x24)
+print:
+    bge x7, x5, done
+
+    la x8, res
+    slli x9, x7, 3
+    add x9, x8, x9
+    ld x10, 0(x9)
 
     la a0, fmt
-    mv a1, x25
+    mv a1, x10
     call printf
 
-    addi x22, x22, 1
-    j print_loop
+    addi x7, x7, 1
+    j print
 
-print_done:
-    la a0, newline
+done:
+    la a0, nl
     call printf
 
     li a0, 0
