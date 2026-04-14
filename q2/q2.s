@@ -1,140 +1,138 @@
-.section .data
-fmt: .string "%ld "
-nl:  .string "\n"
-
-.section .bss
-arr:    .space 800
-res:    .space 800
-stack:  .space 800
-
-.section .text
+.text
 .globl main
+.extern printf
+.extern atoi
+.extern putchar
+
+.data
+fmt: .string "%d "
+
+.bss
+arr: .space 8000
+res: .space 8000
+stack: .space 8000
+
+.text
 
 main:
-    # x5 = n
-    addi x5, a0, -1        # n = argc - 1
-    mv x6, a1              # argv
+    addi sp, sp, -48
+    sd ra, 40(sp)
+    sd s0, 32(sp)
+    sd s1, 24(sp)
+    sd s2, 16(sp)
+    sd s3, 8(sp)
 
-    li x7, 0               # i = 0
+    mv s0, a0
+    mv s1, a1
 
-# -------- Read input --------
-read_loop:
-    bge x7, x5, read_done
+    li s2, 1
+    li s3, 0
 
-    addi x8, x7, 1
-    slli x8, x8, 3
-    add x8, x6, x8
-    ld a0, 0(x8)
+reading:
+    bge s2, s0, read_completed
+
+    slli t0, s2, 3
+    add t1, s1, t0
+    ld a0, 0(t1)
     call atoi
 
-    la x9, arr
-    slli x10, x7, 3
-    add x10, x9, x10
-    sd a0, 0(x10)
+    slli t2, s3, 3
+    la t3, arr
+    add t4, t3, t2
+    sd a0, 0(t4)
 
-    addi x7, x7, 1
-    j read_loop
+    addi s3, s3, 1
+    addi s2, s2, 1
+    j reading
 
-read_done:
+read_completed:
+    addi t0, s3, -1
+    li t1, -1
 
-# -------- res[i] = -1 --------
-    li x7, 0
-init:
-    bge x7, x5, init_done
-    la x8, res
-    slli x9, x7, 3
-    add x9, x8, x9
-    li x10, -1
-    sd x10, 0(x9)
-    addi x7, x7, 1
-    j init
-
-init_done:
-
-# -------- Stack logic --------
-    li x11, -1         # top = -1
-    addi x7, x5, -1    # i = n-1
-
-outer:
-    blt x7, zero, finish
+whynot:
+    blt t0, zero, print
 
 while:
-    blt x11, zero, end_while
+    blt t1, zero, next
 
-    # stack[top]
-    la x8, stack
-    slli x9, x11, 3
-    add x9, x8, x9
-    ld x10, 0(x9)
+    la t2, stack
+    slli t3, t1, 3
+    add t4, t2, t3
+    ld t5, 0(t4)
 
-    # arr[stack[top]]
-    la x12, arr
-    slli x13, x10, 3
-    add x13, x12, x13
-    ld x14, 0(x13)
+    la t2, arr
+    slli t3, t5, 3
+    add t4, t2, t3
+    ld t5, 0(t4)
 
-    # arr[i]
-    slli x15, x7, 3
-    add x15, x12, x15
-    ld x16, 0(x15)
+    la t2, arr
+    slli t3, t0, 3
+    add t4, t2, t3
+    ld t6, 0(t4)
 
-    ble x14, x16, pop
-    j end_while
+    blt t6, t5, next
 
-pop:
-    addi x11, x11, -1
+    addi t1, t1, -1
     j while
 
-end_while:
+negative:
+    li t5, -1
+    sd t5, 0(t4)
+    j push_stack   
 
-    # if stack not empty → res[i] = stack[top]
-    blt x11, zero, skip
+next:
+    la t2, res
+    slli t3, t0, 3
+    add t4, t2, t3
 
-    la x8, stack
-    slli x9, x11, 3
-    add x9, x8, x9
-    ld x10, 0(x9)
+    blt t1, zero, negative
 
-    la x12, res
-    slli x13, x7, 3
-    add x13, x12, x13
-    sd x10, 0(x13)
+    la t2, stack
+    slli t3, t1, 3
+    add t5, t2, t3
+    ld t6, 0(t5)
 
-skip:
+    sd t6, 0(t4)
+    j push_stack
 
-    # push i
-    addi x11, x11, 1
-    la x8, stack
-    slli x9, x11, 3
-    add x9, x8, x9
-    sd x7, 0(x9)
+push_stack:
+    addi t1, t1, 1
 
-    addi x7, x7, -1
-    j outer
+    la t2, stack
+    slli t3, t1, 3
+    add t4, t2, t3
+    sd t0, 0(t4)
 
-finish:
-
-# -------- Print --------
-    li x7, 0
+    addi t0, t0, -1
+    j whynot
 
 print:
-    bge x7, x5, done
+    li s2, 0
 
-    la x8, res
-    slli x9, x7, 3
-    add x9, x8, x9
-    ld x10, 0(x9)
+printing:
+    bge s2, s3, end
+
+    la t0, res
+    slli t1, s2, 3
+    add t2, t0, t1
+    ld a1, 0(t2)
 
     la a0, fmt
-    mv a1, x10
     call printf
 
-    addi x7, x7, 1
-    j print
+    addi s2, s2, 1
+    j printing
 
-done:
-    la a0, nl
-    call printf
+end:
+    li a0, 10
+    call putchar
 
     li a0, 0
+
+    ld ra, 40(sp)
+    ld s0, 32(sp)
+    ld s1, 24(sp)
+    ld s2, 16(sp)
+    ld s3, 8(sp)
+    addi sp, sp, 48
     ret

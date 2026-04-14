@@ -7,7 +7,7 @@ int main(){
     int n=0,m=0;
     while(scanf("%s %d %d",arr,&n,&m)==3){
         char name[30];
-        sprintf(name,"lib%s.so",arr);
+        sprintf(name,"./lib%s.so",arr); 
         void *handle=dlopen(name, RTLD_LAZY);
         if(!handle){
             printf("ERROR LOADING LIBRARY\n");
@@ -24,4 +24,4 @@ int main(){
         printf("%d\n",result);
         dlclose(handle);
     }
-}   
+}
