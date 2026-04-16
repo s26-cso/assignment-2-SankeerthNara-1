@@ -6,6 +6,7 @@
 
 .data
 fmt: .string "%d "
+fmt_last: .string "%d"
 
 .bss
 arr: .space 8000
@@ -109,6 +110,8 @@ push_stack:
 print:
     li s2, 0
 
+addi s3, s3, -1
+
 printing:
     bge s2, s3, end
 
@@ -124,9 +127,14 @@ printing:
     j printing
 
 end:
+    slli t1, s2, 3
+    la t0, res
+    add t2, t0, t1
+    ld a1, 0(t2)
+    la a0, fmt_last
+    call printf
     li a0, 10
     call putchar
-
     li a0, 0
 
     ld ra, 40(sp)
